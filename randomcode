@@ -1,0 +1,34 @@
+from datetime import datetime
+import math
+def timestamp():
+  now=datetime.now()
+	x=str(now.month)
+	d=str(now.day)
+	y=str(now.year)
+	print x +"/"+d+"/"+y
+
+import math
+def area_of_circle(radius):
+    radius = math.pi*radius**2
+    return radius
+    
+area_of_circle(70)
+def hotel_cost(nights):
+    nights=nights*140
+    return nights
+def plane_ride_cost(city):
+    if city=="Charlotte": return 183
+    elif city=="Tampa": return 220
+    elif city=="Pittsburgh": return 222
+    elif city=="Los Angeles": return 475
+    else: print"city not found"
+def rental_car_cost(days):
+    if days >=7: days=days*40-50
+    elif days>=3: days=days*40-20
+    else: days=days*40
+    return days
+def trip_cost(city,days):
+    sum=hotel_cost(days)+rental_car_cost(days)
+    sum=sum+plane_ride_cost(city)
+    return sum
+print trip_cost('Tampa',5)
