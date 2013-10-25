@@ -1,0 +1,110 @@
+index = '''
+    <div><p>
+    python has arrived!</p>
+    </div>
+'''
+
+bufsize = 4048
+import socket
+import re
+from urlparse import urlparse
+from subprocess import Popen, PIPE
+from threading import Thread
+from Queue import Queue, Empty
+
+class Headers(object):
+    def __init__(self, headers):
+        self.__dict__.update(headers)
+
+    def __getitem__(self, name):
+        return getattr(self, name)
+
+    def get(self, name, default=None):
+        return getattr(self, name, default)
+
+class Request(object):
+    header_re = re.compile(r'([a-zA-Z-]+):? ([^\r]+)', re.M)
+    def __init__(self, sock):
+        header_off = -1
+        data = ''
+        while header_off == -1:
+            data += sock.recv(bufsize)
+            header_off = data.find('\r\n\r\n')
+        header_string = data[:header_off]
+        self.content = data[header_off+4:]
+
+        lines = self.header_re.findall(header_string)
+        self.method, path = lines.pop(0)
+        path, protocol = path.split(' ')
+        self.headers = Headers(
+            (name.lower().replace('-', '_'), value)
+            for name, value in lines
+        )
+
+        if self.method in ['POST', 'PUT']:
+            content_length = int(self.headers.get('content_length', 0))
+            while len(self.content) <  content_length:
+                self.content += sock.recv(bufsize)
+
+        self.query = urlparse(path)[4]
+        
+class parseBody(object):
+    def splitData(self,rawstr):
+        #print rawstr + "=as input"
+        rawstr1 = rawstr.split("&", 2)
+        #print rawstr1
+        cmdlist = []
+        for i in rawstr1:
+            #print i
+            i = i.split("=",2)
+            cmdlist.append(i)
+            #print cmdlist
+        return cmdlist
+
+    def arrangeCmd(self,parsedarray):
+        command = parsedarray[0][1]
+        args = parsedarray[1][1]
+        print command + " -Command"
+        print args + " -Args"
+        return command + " " + args
+
+
+acceptor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+acceptor.setsockopt(
+    socket.SOL_SOCKET,
+    socket.SO_REUSEADDR,
+    1,
+)
+acceptor.bind(('', 2501 ))
+acceptor.listen(10)
+
+
+if __name__ == '__main__':
+    while True:
+        sock, info = acceptor.accept() #accept sock request
+        request = Request(sock) #read socket data into variable
+        cmd = request.content #make cmd request's content
+        shellcmd = parseBody()
+        localout = shellcmd.splitData(cmd)
+        print localout
+        localout = shellcmd.arrangeCmd(localout)
+        print type(localout)
+        #cmd = cmd.listener.arrangeCmd(cmd) #arrange array for local processing
+        sock.send('HTTP/1.1 200 OK\n\n' + index + cmd)
+        proc = Popen(localout, stdout=PIPE, shell=True)
+        while True:
+            line = proc.stdout.readline()
+            if line != '':
+                #the real code does filtering here
+                print "]]]:", line.rstrip()
+                sock.send(line+"<br>")
+            else:
+                break
+        '''
+        for line in proc.stdout:
+            print line
+            sock.send(line+"<br>")
+            '''
+        print localout + " output has been sent to client."
+        #index % request.content
+        sock.close()
